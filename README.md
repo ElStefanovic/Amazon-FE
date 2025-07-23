@@ -1,272 +1,240 @@
-# Amazon-FE
-
-Deploy Netflix Clone on Cloud using jenkins, SonarQube, Docker and Trivy for code quality and vulnerability scanning.
-
-Phase 1: Initial Setup and AWS environment Deployment
-
- Step 1: Set up the Networking and Compute Environment
- ![VPC ressource map](https://github.com/user-attachments/assets/d81ca1a8-2019-4b19-a0de-c22888593b03)
-
-    Create a VPC (Virtual Private Cloud):
-    Define a custom VPC to isolate resources within your AWS account.
-
-    Create a Public Subnet:
-    Configure a subnet that allows public access to resources (e.g., web servers).
-
-    Attach an Internet Gateway (IGW):
-    Enable outbound and inbound internet connectivity for the public subnet.
-
-    Configure Security Groups:
-    Define security group rules to control inbound/outbound traffic (e.g., allow HTTP/HTTPS and SSH, TCP 9000, TCP 8080, TCP 3000).
-
-    Launch EC2 Instances:
-    Deploy EC2 instances (Ubuntu 22.04) within the public subnet and associate them with the appropriate security groups.
-
-    Connect to the instance using SSH.
-
-Step 2: Updating and Upgrading the Ubuntu server :
-
-     sudo apt-get update -y && Sudo apt-get uprade -y
-
-Step 3: Installing required packages to install docker : 
-
-     sudo apt-get install apt-transport-https gnupg lsb-release -y
-     
-     This command installs tools to enable HTTPS repositories, manage GPG keys, and identify the Linux distribution version.
-
-Phase 2: Security
-        
-  Step 4: Setting Up Trivy for vulnerability scanning and testing the installation :
-
-      Add repository setting to /etc/apt/sources.list.d.
-      
-      sudo apt-get install wget gnupg
-      wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | gpg --dearmor | sudo tee /usr/share/keyrings/trivy.gpg > /dev/null
-      echo "deb [signed-by=/usr/share/keyrings/trivy.gpg] https://aquasecurity.github.io/trivy-repo/deb generic main" | sudo tee -a /etc/apt/sources.list.d/trivy.list
-      sudo apt-get update
-      sudo apt-get install trivy
-      trivy --version
-
-  Step 5: Installation of sonarqube : 
-    
-    Set up Docker on the EC2 instance:
-    
-    sudo apt-get install docker.io -y
-    sudo usermod -aG docker $USER  # Replace with your system's username, e.g., 'ubuntu'
-    newgrp docker
-    sudo chmod 777 /var/run/docker.sock
-
-    Do no forget to add jenkins in the docker group :
-    sudo su
-    sudo usermod -aG docker jenkins
-    sudo systemctl restart jenkins
-
-    Run sonarQube in Docker : 
-    
-    docker run -d --name sonar -p 9000:9000 sonarqube:lts-community
-    
-    To access: 
-    publicIP:9000 (by default username & password is admin)
+Amazon-FE
 
 
 
-    Integrate SonarQube and Configure:
-        Integrate SonarQube with your CI/CD pipeline.
-        Configure SonarQube to analyze code for quality and security issues.
+Deploy a Netflix Clone on AWS Cloud using Jenkins, SonarQube, Docker, and Trivy for code quality and vulnerability scanning.
+Architecture
 
+flowchart TD
+    A[Developer] -->|Push Code| B[GitHub Repository]
+    B -->|Webhook| C[Jenkins Pipeline]
+    C --> D[SonarQube - Code Analysis]
+    C --> E[OWASP Dependency Check]
+    C --> F[Trivy Scan]
+    C --> G[Docker Build & Push to Docker Hub]
+    G --> H[AWS EC2 Deployment - Container Run]
+
+Project Overview
+
+This project demonstrates:
+
+    Automated CI/CD pipeline with Jenkins
+
+    Static code analysis and quality gates using SonarQube
+
+    Containerization with Docker and publishing to Docker Hub
+
+    Security scanning using Trivy and OWASP Dependency Check
+
+    Deployment of the application on AWS EC2
+
+Prerequisites
+
+    AWS account with permissions to create VPC, Subnet, Security Groups, EC2
+
+    Installed CLI tools: Git, SSH, Docker, Trivy
+
+    Jenkins server with required plugins (SonarQube, Docker, NodeJS, OWASP)
+
+    SonarQube instance running (via Docker or standalone)
+
+Phase 1: Initial Setup and AWS Environment Deployment
+Step 1: Networking and Compute Environment
+
+VPC resource map
+
+    Create a VPC: Isolate resources in AWS.
+
+    Create a Public Subnet: Allow external access (web servers).
+
+    Attach Internet Gateway: Enable internet connectivity.
+
+    Configure Security Groups: Allow HTTP/HTTPS, SSH, TCP 9000/8080/3000.
+
+    Launch EC2 Instances: Deploy Ubuntu 22.04 server and connect via SSH.
+
+Step 2: Update and Upgrade Ubuntu
+
+sudo apt-get update -y && sudo apt-get upgrade -y
+
+Step 3: Install Prerequisite Packages
+
+sudo apt-get install apt-transport-https gnupg lsb-release -y
+
+Phase 2: Security Setup
+Step 4: Install Trivy
+
+sudo apt-get install wget gnupg
+wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | gpg --dearmor | sudo tee /usr/share/keyrings/trivy.gpg > /dev/null
+echo "deb [signed-by=/usr/share/keyrings/trivy.gpg] https://aquasecurity.github.io/trivy-repo/deb generic main" | sudo tee -a /etc/apt/sources.list.d/trivy.list
+sudo apt-get update
+sudo apt-get install trivy
+trivy --version
+
+Step 5: Install and Run SonarQube
+Install Docker and Configure
+
+sudo apt-get install docker.io -y
+sudo usermod -aG docker $USER
+newgrp docker
+sudo chmod 777 /var/run/docker.sock
+
+Add Jenkins to Docker Group
+
+sudo su
+sudo usermod -aG docker jenkins
+sudo systemctl restart jenkins
+
+Run SonarQube via Docker
+
+docker run -d --name sonar -p 9000:9000 sonarqube:lts-community
+
+Access at http://<EC2-PUBLIC-IP>:9000 (default credentials: admin/admin).
 Phase 3: CI/CD Setup
+Step 6: Install Jenkins and Java
 
-Step 6: Intalling Jenkins an Java (following jenkins officials docs: https://www.jenkins.io/doc/book/installing/linux/)
+Follow Jenkins Docs:
 
-      Installing Java and check the installation with the command below :
+sudo apt update
+sudo apt install fontconfig openjdk-21-jre
+java -version
 
-      sudo apt update
-      sudo apt install fontconfig openjdk-21-jre
-      java -version
+Install Jenkins
 
-      
-      intalling Jenkins :
+sudo wget -O /etc/apt/keyrings/jenkins-keyring.asc https://pkg.jenkins.io/debian-stable/jenkins.io-2023.key
+echo "deb [signed-by=/etc/apt/keyrings/jenkins-keyring.asc] https://pkg.jenkins.io/debian-stable binary/" | sudo tee /etc/apt/sources.list.d/jenkins.list > /dev/null
+sudo apt-get update
+sudo apt-get install jenkins -y
+sudo systemctl enable jenkins
+sudo systemctl start jenkins
+sudo systemctl status jenkins
 
-      sudo wget -O /etc/apt/keyrings/jenkins-keyring.asc \
-      https://pkg.jenkins.io/debian-stable/jenkins.io-2023.key
-      echo "deb [signed-by=/etc/apt/keyrings/jenkins-keyring.asc]" \
-      https://pkg.jenkins.io/debian-stable binary/ | sudo tee \
-      /etc/apt/sources.list.d/jenkins.list > /dev/null
-      sudo apt-get update
-      sudo apt-get install jenkins -y
+Access Jenkins at http://<EC2-PUBLIC-IP>:8080.
+Install Jenkins Plugins
 
-      Verify the jenkins installation : 
+Install:
 
-      sudo systemctl enable jenkins      
-      sudo systemctl start jenkins
-      sudo systemctl status jenkins
-      
-      Access Jenkins in a web browser using the public IP of your EC2 instance.
+    Eclipse Temurin Installer
 
-      publicIp:8080
+    SonarQube Scanner
 
-      Install Necessary Plugins in Jenkins:
+    NodeJS Plugin
 
-      Goto Manage Jenkins →Plugins → Available Plugins →
+    OWASP Dependency-Check
 
-        Install below plugins :
+    Docker, Docker Pipeline, Docker Build Step
 
-        1 Eclipse Temurin Installer (Install without restart)
-        2 SonarQube Scanner (Install without restart)
-        3 NodeJs Plugin (Install Without restart)
-        4 OWASP Dependency-Check
-        5 Docker, Docker pipeline, Docker build step
+Configure Tools in Jenkins
 
-      Install required tools in Jenkins:
-        
-        Goto Manage Jenkins →Tools →
+Go to Manage Jenkins → Tools and add:
 
-        Installation of JDK (name: "jdk21", Version:"21.0.7+6", Install from adoptium.net ) 
-        Installation of NodeJs ( name: "nodejs", version:"24.4.1", install from nodejs.org
-        Installation of sonarQube ( name: "sonar-scanner", version:"7.2.0.5079",Install from Maven Central  )
-        Installation of Dependency-Check ( name:"DP-Check", Version: "12.1.3",  Install from github.com)
-        Installation of Docker ( name:"docker", - )
+    JDK: jdk21
 
-    Step 7: Adding credentials for sonarquebe and docker hub in jenkins :
-    
-      Add Docker Hub Credentials
+    NodeJS: nodejs
 
-        Go to Jenkins Dashboard → Manage Jenkins → Credentials → System → Global credentials (unrestricted).
+    Sonar Scanner: sonar-scanner
 
-        Click Add Credentials.
-        Select Username with password.
-    Enter:
-        Username: Your Docker Hub username
-        Password: Your Docker Hub password or personal access token
-        ID: docker (important – match with credentialsId: 'docker' in your pipeline)
-        Description: Docker Hub credentials (optional)
-    Click Save.
+    Dependency Check: DP-Check
 
-    Add SonarQube Token Credentials
+    Docker: docker
 
-        Generate a token in SonarQube UI:
-        Go to My Account → Security → Generate Tokens.
-        In Jenkins: Manage Jenkins → Credentials → System → Global credentials (unrestricted).
+Step 7: Add Credentials
+Docker Hub
 
-    Click Add Credentials.
-        Select Secret text.
-        Enter:
-        Secret: Paste the SonarQube token
-        ID: sonar-scanner (use this ID in pipeline credentialsId: 'sonar-scanner')
-        Description: SonarQube token (optional)
-        Save.
+    Add username/password → ID: docker
 
-    Configure SonarQube Server in Jenkins
+SonarQube
 
-        Go to Manage Jenkins → Configure System.
-        Scroll to SonarQube servers.
-        Click Add SonarQube:
-        Name: Sonar-server
-        Server URL: http://<your-sonarqube-server>:9000
-        Server authentication token: Select the credential you added (sonar-scanner).
-        Save.
+    Generate token in SonarQube → Add as Secret Text → ID: sonar-scanner
 
-    Create a Jenkins webhook :
-    Configure the Webhook in SonarQube
+Configure SonarQube in Jenkins
 
-    Log in to SonarQube as an administrator.
-    Go to Administration → Configuration → Webhooks.
-    Click Create.
-    Enter:
+    Go to Manage Jenkins → Configure System
+
+    Add:
+
+        Name: sonar-server
+
+        Server URL: http://<sonarqube-server>:9000
+
+        Auth Token: sonar-scanner
+
+Create Webhook in SonarQube
+
+    Go to Administration → Configuration → Webhooks
+
+    Add:
+
         Name: Jenkins
+
         URL: http://<jenkins-server>/sonarqube-webhook/
-        Description: Webhook for Jenkins Quality Gate
-        Save.
 
-    Configure Jenkins SonarQube Plugin:
-        In Jenkins, go to Manage Jenkins → Configure System.
-        Scroll to SonarQube servers:
-        Add your SonarQube server URL and token.
-        Enable the option Enable webhook for SonarQube if available.
+Jenkins Pipeline
 
-Configure CI/CD Pipeline in Jenkins:
-
-  pipeline{
+pipeline {
     agent any
-    tools{
+    tools {
         jdk 'jdk21'
         nodejs 'nodejs'
     }
     environment {
-        SCANNER_HOME=tool 'sonar-scanner'
+        SCANNER_HOME = tool 'sonar-scanner'
     }
     stages {
-        stage('clean workspace'){
-            steps{
-                cleanWs()
-            }
+        stage('Clean Workspace') {
+            steps { cleanWs() }
         }
-        stage('Checkout from Git'){
-            steps{
-                git branch: 'main', url: 'https://github.com/ElStefanovic/Amazon-FE.git'
-            }
+        stage('Checkout from Git') {
+            steps { git branch: 'main', url: 'https://github.com/ElStefanovic/Amazon-FE.git' }
         }
-        stage("Sonarqube Analysis "){
-            steps{
+        stage('SonarQube Analysis') {
+            steps {
                 withSonarQubeEnv('sonar-server') {
-                    sh ''' $SCANNER_HOME/bin/sonar-scanner -Dsonar.projectName=Amazon \
+                    sh ''' $SCANNER_HOME/bin/sonar-scanner \
+                    -Dsonar.projectName=Amazon \
                     -Dsonar.projectKey=Amazon '''
                 }
             }
         }
-        stage("quality gate"){
-           steps {
+        stage('Quality Gate') {
+            steps {
                 script {
                     waitForQualityGate abortPipeline: false, credentialsId: 'sonar-scanner'
                 }
             }
         }
         stage('Install Dependencies') {
-            steps {
-                sh "npm install"
-            }
+            steps { sh 'npm install' }
         }
-        stage('OWASP FS SCAN') {
+        stage('OWASP FS Scan') {
             steps {
                 dependencyCheck additionalArguments: '--scan ./ --disableYarnAudit --disableNodeAudit', odcInstallation: 'DP-Check'
                 dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
             }
         }
-        stage('TRIVY FS SCAN') {
-            steps {
-                sh "trivy fs . > trivyfs.txt"
-            }
+        stage('Trivy FS Scan') {
+            steps { sh 'trivy fs . > trivyfs.txt' }
         }
-        
-        stage("Docker Build & Push"){
-            steps{
-               script {
-                         withDockerRegistry(credentialsId: 'docker', toolName: 'docker') {
-                         sh "docker build -t amazon ."
-                         sh "docker tag amazon elstefanovic/amazon:latest "
-                         sh "docker push elstefanovic/amazon:latest "
-                         }
+        stage('Docker Build & Push') {
+            steps {
+                script {
+                    withDockerRegistry(credentialsId: 'docker', toolName: 'docker') {
+                        sh 'docker build -t amazon .'
+                        sh 'docker tag amazon elstefanovic/amazon:latest'
+                        sh 'docker push elstefanovic/amazon:latest'
+                    }
                 }
             }
         }
-        stage("TRIVY"){
-            steps{
-                sh "trivy image --timeout 10m elstefanovic/amazon:latest > trivyimage.txt"
-            }
+        stage('Trivy Image Scan') {
+            steps { sh 'trivy image --timeout 10m elstefanovic/amazon:latest > trivyimage.txt' }
         }
-       stage('Deploy to container'){
-            steps{
-                sh 'docker run -d --name amazon -p 3000:3000 elstefanovic/amazon:latest'
-            }
+        stage('Deploy to Container') {
+            steps { sh 'docker run -d --name amazon -p 3000:3000 elstefanovic/amazon:latest' }
         }
     }
-}        
+}
 
+Cleanup
 
-Do not forget to replace elstefanovic with your actual DockerHub username where necessary in the pipeline.
-
-Step 8: Cleanup
-
-    Cleanup AWS EC2 Instances:
-        Terminate AWS EC2 instances that are no longer needed.
-
+Terminate AWS EC2 instances and delete resources when not in use.
